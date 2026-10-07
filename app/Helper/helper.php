@@ -119,6 +119,20 @@ if (!function_exists('activeLanguages')) {
 //     }
 // }
 
+if (!function_exists('isS3FileSystem')) {
+    function isS3FileSystem()
+    {
+        static $isS3 = null;
+
+        if ($isS3 === null) {
+            $setting = globalSetting('file_system');
+            $isS3 = $setting && $setting->value == 1 && !empty(config('filesystems.disks.s3.bucket'));
+        }
+
+        return $isS3;
+    }
+}
+
 if (!function_exists('getFilePath')) {
     function getFilePath($path)
     {
@@ -129,17 +143,15 @@ if (!function_exists('getFilePath')) {
         }
 
         try {
-            $s3Config = config('filesystems.disks.s3');
-            $isS3Configured = !empty($s3Config['key']) && !empty($s3Config['secret']);
-
-            // Check if file exists on S3
-//            if ($isS3Configured && Storage::disk('s3')->exists($path)) {
-  //              return Storage::disk('s3')->url($path);
-    //        }
-
             // Check if file exists in local storage
             if (Storage::exists($path)) {
                 return asset('storage/' . $path);
+            }
+
+            // S3 objects are public, so build the URL directly. No exists() call:
+            // it needs valid credentials and costs one AWS request per image.
+            if (isS3FileSystem()) {
+                return Storage::disk('s3')->url($path);
             }
         } catch (Exception $e) {
             Log::error('Error in getFilePath: ' . $e->getMessage());
