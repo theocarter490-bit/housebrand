@@ -1,0 +1,30 @@
+name: Dev Deployment Workflow
+
+on:
+  push:
+    branches:
+      - production
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: SSH Deploy
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.PROD_REMOTE_HOST }}
+          username: ${{ secrets.PROD_REMOTE_USERNAME }}
+          key: ${{ secrets.PROD_REMOTE_SSH_PRIVATE_KEY }}
+          script: |
+            cd /var/www/house-brand
+            git reset --hard
+            git pull origin production
+            composer install
+            export NVM_DIR=~/.nvm
+            source ~/.nvm/nvm.sh
+            composer install
+            npm install
+            npm run prod
+            php artisan migrate
+            php artisan o:c

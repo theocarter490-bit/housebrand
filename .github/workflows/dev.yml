@@ -1,0 +1,29 @@
+name: Dev Deployment Workflow
+
+on:
+  push:
+    branches:
+      - dev-cicd
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: SSH Deploy
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DEV_REMOTE_HOST }}
+          username: ${{ secrets.DEV_REMOTE_USERNAME }}
+          key: ${{ secrets.DEV_REMOTE_SSH_PRIVATE_KEY }}
+          script: |
+            cd /home/ubuntu/house-brand
+            git reset --hard
+            git pull origin dev-cicd
+            export NVM_DIR=~/.nvm
+            source ~/.nvm/nvm.sh
+            composer install
+            npm install
+            npm run prod
+            php artisan migrate
+            php artisan o:c
